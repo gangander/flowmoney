@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FlowMoney">
+  <meta name="theme-color" content="#101214">
+  <title>FlowMoney 記帳</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101214;
+      --surface: #191c1f;
+      --surface-2: #24282d;
+      --line: #343a40;
+      --text: #f5f7f8;
+      --muted: #aab3bc;
+      --accent: #2dd4bf;
+      --accent-2: #f7c948;
+      --danger: #ff6b6b;
+      --income: #89e08f;
+      --expense: #ff9f7a;
+      --radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100svh;
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(45, 212, 191, 0.08), transparent 300px),
+        var(--bg);
+      color: var(--text);
+      padding: calc(14px + env(safe-area-inset-top)) 14px calc(92px + env(safe-area-inset-bottom));
+    }
+
+    main {
+      width: min(100%, 520px);
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 4px 0 14px;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .date {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .metric, .panel {
+      background: rgba(25, 28, 31, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 10px;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 6px;
+      overflow-wrap: anywhere;
+      font-size: 17px;
+      line-height: 1.15;
+    }
+
+    .metric.balance strong {
+      color: var(--accent);
+    }
+
+    .panel {
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .panel-title h2 {
+      font-size: 17px;
+    }
+
+    .chart-wrap {
+      height: 310px;
+      overflow: hidden;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .empty {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.6;
+      padding: 24px;
+    }
+
+    .mode {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 4px;
+      background: #111416;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+    }
+
+    .mode button, .chip, .icon-button, .submit {
+      min-height: 44px;
+      border: 0;
+      border-radius: 7px;
+      font: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mode button {
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .mode button.active {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    label {
+      display: block;
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 48px;
+      background: #111416;
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 12px;
+      font: inherit;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.16);
+    }
+
+    .amount-row {
+      display: grid;
+      grid-template-columns: 1fr 54px;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .icon-button {
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 22px;
+    }
+
+    .quick {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 10px 0 12px;
+    }
+
+    .chip {
+      background: #172023;
+      color: var(--accent);
+      border: 1px solid rgba(45, 212, 191, 0.22);
+      font-weight: 800;
+    }
+
+    .submit {
+      width: 100%;
+      background: var(--accent);
+      color: #071010;
+      font-weight: 900;
+      font-size: 17px;
+    }
+
+    .history {
+      display: grid;
+      gap: 8px;
+    }
+
+    .record {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .record:last-child {
+      border-bottom: 0;
+    }
+
+    .route {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .amount {
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .amount.income {
+      color: var(--income);
+    }
+
+    .amount.expense {
+      color: var(--expense);
+    }
+
+    .delete {
+      width: 36px;
+      height: 36px;
+      margin-left: 8px;
+      background: rgba(255, 107, 107, 0.12);
+      color: var(--danger);
+      border: 1px solid rgba(255, 107, 107, 0.26);
+      border-radius: 7px;
+      font-size: 18px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      max-width: 492px;
+      margin: 0 auto;
+      padding: 12px 14px;
+      background: #f5f7f8;
+      color: #101214;
+      border-radius: var(--radius);
+      font-weight: 800;
+      transform: translateY(110px);
+      transition: transform 180ms ease;
+      z-index: 3;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+    }
+
+    @media (max-width: 380px) {
+      body {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .quick {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>FlowMoney</h1>
+        <p class="date" id="todayLabel"></p>
+      </div>
+      <p class="date">iPhone 記帳</p>
+    </header>
+
+    <section class="summary" aria-label="本月摘要">
+      <div class="metric">
+        <span>本月收入</span>
+        <strong id="incomeTotal">$0</strong>
+      </div>
+      <div class="metric">
+        <span>本月支出</span>
+        <strong id="expenseTotal">$0</strong>
+      </div>
+      <div class="metric balance">
+        <span>本月結餘</span>
+        <strong id="balanceTotal">$0</strong>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <h2>資金流向</h2>
+        <span class="date" id="recordCount">0 筆</span>
+      </div>
+      <div class="chart-wrap" id="chart"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <h2>新增一筆</h2>
+      </div>
+
+      <div class="mode" role="tablist" aria-label="記帳模式">
+        <button type="button" class="active" data-mode="expense">支出</button>
+        <button type="button" data-mode="income">收入</button>
+        <button type="button" data-mode="transfer">轉帳</button>
+      </div>
+
+      <form id="entryForm">
+        <div class="field-grid">
+          <div>
+            <label for="fromNode">從哪裡</label>
+            <input id="fromNode" name="fromNode" list="sources" autocomplete="off" required>
+          </div>
+          <div>
+            <label for="toNode">到哪裡</label>
+            <input id="toNode" name="toNode" list="destinations" autocomplete="off" required>
+          </div>
+        </div>
+
+        <div class="amount-row">
+          <div>
+            <label for="amount">金額</label>
+            <input id="amount" name="amount" type="number" inputmode="decimal" min="1" step="1" placeholder="0" required>
+          </div>
+          <button class="icon-button" type="button" id="swapButton" aria-label="交換來源與去向">⇄</button>
+        </div>
+
+        <div class="quick" aria-label="快速金額">
+          <button class="chip" type="button" data-amount="50">50</button>
+          <button class="chip" type="button" data-amount="100">100</button>
+          <button class="chip" type="button" data-amount="500">500</button>
+          <button class="chip" type="button" data-amount="1000">1000</button>
+        </div>
+
+        <button class="submit" type="submit">記下來</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <h2>最近紀錄</h2>
+        <button class="delete" type="button" id="clearButton" aria-label="清空紀錄">×</button>
+      </div>
+      <div class="history" id="historyList"></div>
+    </section>
+  </main>
+
+  <datalist id="sources">
+    <option value="薪水">
+    <option value="現金">
+    <option value="銀行">
+    <option value="信用卡">
+    <option value="悠遊卡">
+    <option value="投資帳戶">
+  </datalist>
+
+  <datalist id="destinations">
+    <option value="餐飲">
+    <option value="交通">
+    <option value="日用品">
+    <option value="娛樂">
+    <option value="房租">
+    <option value="水電">
+    <option value="儲蓄">
+    <option value="投資">
+  </datalist>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const storageKey = "flowmoney-records-v1";
+    const today = new Date();
+    let mode = "expense";
+    let records = JSON.parse(localStorage.getItem(storageKey) || "null") || [
+      { from: "薪水", to: "銀行", amount: 50000, mode: "income", createdAt: new Date(today.getFullYear(), today.getMonth(), 1).toISOString() },
+      { from: "銀行", to: "餐飲", amount: 320, mode: "expense", createdAt: new Date().toISOString() },
+      { from: "銀行", to: "交通", amount: 120, mode: "expense", createdAt: new Date().toISOString() },
+      { from: "銀行", to: "儲蓄", amount: 5000, mode: "transfer", createdAt: new Date().toISOString() }
+    ];
+
+    const form = document.getElementById("entryForm");
+    const fromInput = document.getElementById("fromNode");
+    const toInput = document.getElementById("toNode");
+    const amountInput = document.getElementById("amount");
+    const chart = document.getElementById("chart");
+    const historyList = document.getElementById("historyList");
+    const toast = document.getElementById("toast");
+    const money = new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 });
+
+    document.getElementById("todayLabel").textContent = new Intl.DateTimeFormat("zh-TW", {
+      month: "long",
+      day: "numeric",
+      weekday: "short"
+    }).format(today);
+
+    document.querySelectorAll("[data-mode]").forEach(button => {
+      button.addEventListener("click", () => {
+        mode = button.dataset.mode;
+        document.querySelectorAll("[data-mode]").forEach(item => item.classList.toggle("active", item === button));
+        applyModeDefaults();
+      });
+    });
+
+    document.querySelectorAll("[data-amount]").forEach(button => {
+      button.addEventListener("click", () => {
+        amountInput.value = button.dataset.amount;
+        amountInput.focus();
+      });
+    });
+
+    document.getElementById("swapButton").addEventListener("click", () => {
+      const previousFrom = fromInput.value;
+      fromInput.value = toInput.value;
+      toInput.value = previousFrom;
+    });
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+      if (!records.length) return;
+      if (confirm("要清空所有紀錄嗎？")) {
+        records = [];
+        save();
+        render();
+        showToast("已清空紀錄");
+      }
+    });
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      const from = fromInput.value.trim();
+      const to = toInput.value.trim();
+      const amount = Number(amountInput.value);
+
+      if (!from || !to || !Number.isFinite(amount) || amount <= 0) {
+        showToast("請填入來源、去向與正確金額");
+        return;
+      }
+
+      records.push({ from, to, amount, mode, createdAt: new Date().toISOString() });
+      save();
+      form.reset();
+      applyModeDefaults();
+      render();
+      showToast("已新增一筆");
+    });
+
+    function applyModeDefaults() {
+      if (mode === "expense") {
+        fromInput.placeholder = "銀行、現金、信用卡";
+        toInput.placeholder = "餐飲、交通、日用品";
+      } else if (mode === "income") {
+        fromInput.placeholder = "薪水、獎金、副業";
+        toInput.placeholder = "銀行、現金";
+      } else {
+        fromInput.placeholder = "銀行";
+        toInput.placeholder = "儲蓄、投資、現金";
+      }
+    }
+
+    function save() {
+      localStorage.setItem(storageKey, JSON.stringify(records));
+    }
+
+    function render() {
+      renderSummary();
+      renderChart();
+      renderHistory();
+    }
+
+    function renderSummary() {
+      const monthKey = `${today.getFullYear()}-${today.getMonth()}`;
+      const currentMonth = records.filter(record => {
+        const date = new Date(record.createdAt);
+        return `${date.getFullYear()}-${date.getMonth()}` === monthKey;
+      });
+      const income = sum(currentMonth.filter(record => record.mode === "income"));
+      const expense = sum(currentMonth.filter(record => record.mode === "expense"));
+      document.getElementById("incomeTotal").textContent = money.format(income);
+      document.getElementById("expenseTotal").textContent = money.format(expense);
+      document.getElementById("balanceTotal").textContent = money.format(income - expense);
+      document.getElementById("recordCount").textContent = `${records.length} 筆`;
+    }
+
+    function renderChart() {
+      if (!records.length) {
+        chart.innerHTML = `<div class="empty">還沒有紀錄。<br>新增一筆後，這裡會顯示你的資金流向。</div>`;
+        return;
+      }
+
+      const flows = aggregateFlows(records);
+      const maxAmount = Math.max(...flows.map(flow => flow.amount), 1);
+      const height = 300;
+      const width = 420;
+      const leftNodes = unique(flows.map(flow => flow.from));
+      const rightNodes = unique(flows.map(flow => flow.to));
+      const leftPositions = new Map();
+      const rightPositions = new Map();
+
+      placeNodes(leftNodes, 22, height, leftPositions);
+      placeNodes(rightNodes, width - 114, height, rightPositions);
+
+      const paths = flows.map((flow, index) => {
+        const start = leftPositions.get(flow.from) || { x: 22, y: height / 2 };
+        const end = rightPositions.get(flow.to) || { x: width - 114, y: height / 2 };
+        const thickness = 2 + (flow.amount / maxAmount) * 16;
+        const color = flow.mode === "income" ? "var(--income)" : flow.mode === "expense" ? "var(--expense)" : "var(--accent)";
+        return `<path d="M ${start.x + 92} ${start.y} C ${start.x + 170} ${start.y}, ${end.x - 78} ${end.y}, ${end.x} ${end.y}" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" opacity="0.44" fill="none">
+          <title>${escapeHtml(flow.from)} 到 ${escapeHtml(flow.to)}：${money.format(flow.amount)}</title>
+        </path>`;
+      }).join("");
+
+      const labels = [
+        ...leftNodes.map(node => nodeLabel(node, leftPositions.get(node))),
+        ...rightNodes.map(node => nodeLabel(node, rightPositions.get(node)))
+      ].join("");
+
+      chart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="資金流向圖">${paths}${labels}</svg>`;
+    }
+
+    function nodeLabel(node, position) {
+      if (!position) return "";
+      return `<g transform="translate(${position.x}, ${position.y - 17})">
+          <rect width="92" height="34" rx="7" fill="#24282d" stroke="#343a40"></rect>
+          <text x="46" y="21" text-anchor="middle" fill="#f5f7f8" font-size="12" font-weight="700">${escapeHtml(shortLabel(node))}</text>
+        </g>`;
+    }
+
+    function placeNodes(list, x, height, positions) {
+      const gap = height / (list.length + 1);
+      list.forEach((node, index) => {
+        positions.set(node, { x, y: gap * (index + 1) });
+      });
+    }
+
+    function renderHistory() {
+      if (!records.length) {
+        historyList.innerHTML = `<div class="empty">目前沒有紀錄</div>`;
+        return;
+      }
+
+      historyList.innerHTML = records.slice().reverse().slice(0, 12).map((record, index) => {
+        const realIndex = records.length - 1 - index;
+        const date = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(record.createdAt));
+        return `<div class="record">
+          <div>
+            <div class="route"><span>${escapeHtml(record.from)}</span><span>→</span><span>${escapeHtml(record.to)}</span></div>
+            <div class="meta">${date} · ${modeLabel(record.mode)}</div>
+          </div>
+          <div>
+            <span class="amount ${record.mode}">${money.format(record.amount)}</span>
+            <button class="delete" type="button" aria-label="刪除這筆" onclick="deleteRecord(${realIndex})">×</button>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function deleteRecord(index) {
+      records.splice(index, 1);
+      save();
+      render();
+      showToast("已刪除");
+    }
+
+    function aggregateFlows(items) {
+      const map = new Map();
+      items.forEach(record => {
+        const key = `${record.from}|||${record.to}|||${record.mode}`;
+        const current = map.get(key) || { from: record.from, to: record.to, mode: record.mode, amount: 0 };
+        current.amount += Number(record.amount) || 0;
+        map.set(key, current);
+      });
+      return Array.from(map.values()).sort((a, b) => b.amount - a.amount).slice(0, 10);
+    }
+
+    function unique(items) {
+      return Array.from(new Set(items));
+    }
+
+    function sum(items) {
+      return items.reduce((total, item) => total + Number(item.amount || 0), 0);
+    }
+
+    function modeLabel(value) {
+      return value === "income" ? "收入" : value === "transfer" ? "轉帳" : "支出";
+    }
+
+    function shortLabel(value) {
+      return value.length > 5 ? `${value.slice(0, 5)}…` : value;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[character]);
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    window.deleteRecord = deleteRecord;
+    applyModeDefaults();
+    render();
+  </script>
+</body>
+</html>

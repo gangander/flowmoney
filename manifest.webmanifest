@@ -1,0 +1,17 @@
+{
+  "name": "FlowMoney 記帳",
+  "short_name": "FlowMoney",
+  "description": "適合 iPhone 使用的資金流向記帳工具",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#101214",
+  "theme_color": "#101214",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
