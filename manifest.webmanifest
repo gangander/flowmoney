@@ -1,8 +1,10 @@
 {
   "name": "FlowMoney 記帳",
   "short_name": "FlowMoney",
-  "description": "適合 iPhone 使用的資金流向記帳工具",
-  "start_url": ".",
+  "description": "適合 iPhone 使用的個人財務總覽工具",
+  "id": "/flowmoney/?v=9abfd56b",
+  "start_url": "./?v=9abfd56b",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#101214",
   "theme_color": "#101214",

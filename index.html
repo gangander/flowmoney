@@ -7,9 +7,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FlowMoney">
   <meta name="theme-color" content="#101214">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>FlowMoney</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="manifest" href="manifest.webmanifest?v=9abfd56b">
+  <link rel="apple-touch-icon" href="icon.svg?v=9abfd56b">
   <style>
     :root {
       color-scheme: dark;
@@ -593,6 +596,7 @@
   </div>
 
   <script>
+    const appVersion = "9abfd56b";
     const storeKey = "flowmoney-percento-style-v1";
     const money = new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 });
     const number = new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 2 });
@@ -633,11 +637,11 @@
     const entryAmount = document.getElementById("entryAmount");
     let pendingEntry = null;
 
-    document.getElementById("todayLabel").textContent = new Intl.DateTimeFormat("zh-TW", {
+    document.getElementById("todayLabel").textContent = `${new Intl.DateTimeFormat("zh-TW", {
       month: "long",
       day: "numeric",
       weekday: "short"
-    }).format(today);
+    }).format(today)} · v${appVersion.slice(0, 7)}`;
 
     document.querySelectorAll("[data-tab]").forEach(button => {
       button.addEventListener("click", () => {
