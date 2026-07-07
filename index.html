@@ -165,7 +165,7 @@
       top: env(safe-area-inset-top);
       z-index: 2;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 5px;
       padding: 5px;
       margin: 10px 0;
@@ -324,6 +324,21 @@
       white-space: nowrap;
     }
 
+    .item-actions {
+      display: grid;
+      grid-template-columns: repeat(3, auto);
+      gap: 6px;
+      justify-content: end;
+      margin-top: 8px;
+    }
+
+    .item-actions .secondary,
+    .item-actions .danger {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
     .item-sub {
       margin-top: 4px;
       color: var(--muted);
@@ -380,6 +395,30 @@
 
     .toast.show {
       transform: translateY(0);
+    }
+
+    .entry-sheet[hidden] {
+      display: none;
+    }
+
+    .entry-sheet {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      display: grid;
+      align-items: end;
+      background: rgba(0, 0, 0, 0.54);
+      padding: 12px;
+    }
+
+    .entry-box {
+      width: min(100%, 536px);
+      margin: 0 auto;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius);
+      background: var(--panel);
+      padding: 14px;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
     }
 
     @media (max-width: 390px) {
@@ -458,7 +497,6 @@
       <button class="active" type="button" data-tab="accountsPanel">帳戶</button>
       <button type="button" data-tab="liabilitiesPanel">負債</button>
       <button type="button" data-tab="investmentsPanel">投資</button>
-      <button type="button" data-tab="recordsPanel">流水</button>
     </nav>
 
     <section class="panel active" id="accountsPanel">
@@ -527,41 +565,32 @@
       <div class="list" id="investmentList"></div>
     </section>
 
-    <section class="panel" id="recordsPanel">
-      <div class="panel-head">
-        <h2>流水</h2>
-        <span class="muted">會同步調整帳戶餘額</span>
-      </div>
-      <form id="recordForm" class="grid">
-        <div>
-          <label for="recordAccount">帳戶</label>
-          <select id="recordAccount" required></select>
-        </div>
-        <div>
-          <label for="recordType">類型</label>
-          <select id="recordType">
-            <option value="expense">支出</option>
-            <option value="income">收入</option>
-          </select>
-        </div>
-        <div>
-          <label for="recordName">項目</label>
-          <input id="recordName" autocomplete="off" placeholder="餐飲" required>
-        </div>
-        <div>
-          <label for="recordAmount">金額</label>
-          <input id="recordAmount" type="number" inputmode="decimal" step="1" placeholder="0" required>
-        </div>
-        <div class="full actions">
-          <button class="primary" type="submit">記一筆</button>
-          <button class="secondary" type="button" data-fill="record">範例</button>
-        </div>
-      </form>
-      <div class="list" id="recordList"></div>
-    </section>
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="entry-sheet" id="entrySheet" hidden>
+    <form class="entry-box" id="entryForm">
+      <div class="panel-head">
+        <h2 id="entryTitle">新增</h2>
+        <button class="danger" type="button" id="entryClose" aria-label="關閉">×</button>
+      </div>
+      <div class="grid">
+        <div>
+          <label for="entryName">項目</label>
+          <input id="entryName" autocomplete="off" placeholder="吃飯" required>
+        </div>
+        <div>
+          <label for="entryAmount">金額</label>
+          <input id="entryAmount" type="number" inputmode="decimal" step="1" placeholder="0" required>
+        </div>
+        <div class="full actions">
+          <button class="primary" type="submit">加入</button>
+          <button class="secondary" type="button" id="entryCancel">取消</button>
+        </div>
+      </div>
+    </form>
+  </div>
 
   <script>
     const storeKey = "flowmoney-percento-style-v1";
@@ -571,6 +600,7 @@
     const sampleDate = today.toISOString();
     let priceBookPromise = null;
     let state = loadState();
+    normalizeState();
     const netWorth = document.getElementById("netWorth");
     const assetTotal = document.getElementById("assetTotal");
     const liabilityTotal = document.getElementById("liabilityTotal");
@@ -586,7 +616,6 @@
     const accountList = document.getElementById("accountList");
     const liabilityList = document.getElementById("liabilityList");
     const investmentList = document.getElementById("investmentList");
-    const recordList = document.getElementById("recordList");
     const accountName = document.getElementById("accountName");
     const accountBalance = document.getElementById("accountBalance");
     const liabilityName = document.getElementById("liabilityName");
@@ -594,13 +623,15 @@
     const investmentSymbol = document.getElementById("investmentSymbol");
     const investmentShares = document.getElementById("investmentShares");
     const addInvestmentButton = document.getElementById("addInvestmentButton");
-    const recordAccount = document.getElementById("recordAccount");
-    const recordType = document.getElementById("recordType");
-    const recordName = document.getElementById("recordName");
-    const recordAmount = document.getElementById("recordAmount");
     const priceStatus = document.getElementById("priceStatus");
     const refreshPrices = document.getElementById("refreshPrices");
     const toast = document.getElementById("toast");
+    const entrySheet = document.getElementById("entrySheet");
+    const entryForm = document.getElementById("entryForm");
+    const entryTitle = document.getElementById("entryTitle");
+    const entryName = document.getElementById("entryName");
+    const entryAmount = document.getElementById("entryAmount");
+    let pendingEntry = null;
 
     document.getElementById("todayLabel").textContent = new Intl.DateTimeFormat("zh-TW", {
       month: "long",
@@ -638,13 +669,16 @@
       if (added) event.target.reset();
     });
 
-    document.getElementById("recordForm").addEventListener("submit", event => {
-      event.preventDefault();
-      addRecord(recordAccount.value, recordType.value, recordName.value.trim(), toNumber(recordAmount.value));
-      event.target.reset();
-    });
-
     document.getElementById("refreshPrices").addEventListener("click", updatePrices);
+    document.getElementById("entryClose").addEventListener("click", closeEntry);
+    document.getElementById("entryCancel").addEventListener("click", closeEntry);
+    entrySheet.addEventListener("click", event => {
+      if (event.target === entrySheet) closeEntry();
+    });
+    entryForm.addEventListener("submit", event => {
+      event.preventDefault();
+      applyEntry(entryName.value.trim(), toNumber(entryAmount.value));
+    });
 
     function loadState() {
       const saved = JSON.parse(localStorage.getItem(storeKey) || "null");
@@ -666,6 +700,13 @@
       };
     }
 
+    function normalizeState() {
+      state.accounts ||= [];
+      state.liabilities ||= [];
+      state.investments ||= [];
+      state.records ||= [];
+    }
+
     function save() {
       localStorage.setItem(storeKey, JSON.stringify(state));
     }
@@ -681,7 +722,6 @@
       renderAccounts();
       renderLiabilities();
       renderInvestments();
-      renderRecords();
       renderOverview(totals);
       save();
     }
@@ -716,13 +756,12 @@
     }
 
     function renderAccounts() {
-      recordAccount.innerHTML = state.accounts.map(account => `<option value="${account.id}">${escapeHtml(account.name)}</option>`).join("");
       accountList.innerHTML = state.accounts.map(account => itemHtml(
         account.name,
         money.format(account.balance),
         "資產帳戶",
         account.color,
-        deleteButton("account", account.id)
+        accountActions(account.id)
       )).join("") || emptyHtml("尚未建立資產帳戶");
     }
 
@@ -732,7 +771,7 @@
         money.format(item.balance),
         "負債",
         item.color,
-        deleteButton("liability", item.id)
+        liabilityActions(item.id)
       )).join("") || emptyHtml("尚未建立負債");
     }
 
@@ -743,16 +782,6 @@
         const sub = `${number.format(item.shares)} 股 · 當日價 ${number.format(item.price)} ${item.currency || "TWD"} · ${updated}`;
         return itemHtml(item.symbol, money.format(value), sub, "var(--yellow)", deleteButton("investment", item.id));
       }).join("") || emptyHtml("尚未建立投資標的");
-    }
-
-    function renderRecords() {
-      recordList.innerHTML = state.records.slice().reverse().slice(0, 20).map(record => {
-        const account = state.accounts.find(item => item.id === record.accountId);
-        const sign = record.type === "income" ? "+" : "-";
-        const color = record.type === "income" ? "var(--green)" : "var(--red)";
-        const date = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(record.createdAt));
-        return itemHtml(record.name, `${sign}${money.format(record.amount)}`, `${account?.name || "帳戶"} · ${date}`, color, deleteButton("record", record.id));
-      }).join("") || emptyHtml("尚未建立流水紀錄");
     }
 
     function addAccount(name, balance) {
@@ -801,12 +830,51 @@
       }
     }
 
-    function addRecord(accountId, type, name, amount) {
-      const account = state.accounts.find(item => item.id === accountId);
-      if (!account || !name || !validAmount(amount)) return showToast("請填入帳戶、項目與金額");
-      account.balance += type === "income" ? amount : -amount;
-      state.records.push({ id: uid(), accountId, type, name, amount, createdAt: new Date().toISOString() });
-      showToast("已記一筆");
+    function openEntry(kind, id, type) {
+      const item = kind === "account"
+        ? state.accounts.find(account => account.id === id)
+        : state.liabilities.find(liability => liability.id === id);
+      if (!item) return;
+      pendingEntry = { kind, id, type };
+      entryTitle.textContent = `${item.name} · ${entryLabel(kind, type)}`;
+      entryName.value = type === "expense" || type === "charge" ? "吃飯" : "";
+      entryAmount.value = "";
+      entrySheet.hidden = false;
+      entryAmount.focus();
+    }
+
+    function closeEntry() {
+      pendingEntry = null;
+      entrySheet.hidden = true;
+      entryForm.reset();
+    }
+
+    function applyEntry(name, amount) {
+      if (!pendingEntry || !name || !validAmount(amount)) return showToast("請填入項目與金額");
+      const { kind, id, type } = pendingEntry;
+      const item = kind === "account"
+        ? state.accounts.find(account => account.id === id)
+        : state.liabilities.find(liability => liability.id === id);
+      if (!item) return showToast("找不到項目");
+
+      if (kind === "account") {
+        item.balance += type === "income" ? amount : -amount;
+      } else {
+        item.balance += type === "charge" ? amount : -amount;
+        item.balance = Math.max(0, item.balance);
+      }
+
+      state.records.push({
+        id: uid(),
+        targetKind: kind,
+        targetId: id,
+        type,
+        name,
+        amount,
+        createdAt: new Date().toISOString()
+      });
+      closeEntry();
+      showToast("已加入");
       render();
     }
 
@@ -902,7 +970,6 @@
       if (kind === "account") state.accounts = state.accounts.filter(item => item.id !== id);
       if (kind === "liability") state.liabilities = state.liabilities.filter(item => item.id !== id);
       if (kind === "investment") state.investments = state.investments.filter(item => item.id !== id);
-      if (kind === "record") state.records = state.records.filter(item => item.id !== id);
       showToast("已刪除");
       render();
     }
@@ -911,8 +978,7 @@
       const examples = {
         account: () => { accountName.value = "活存"; accountBalance.value = "30000"; },
         liability: () => { liabilityName.value = "信用卡"; liabilityBalance.value = "6800"; },
-        investment: () => { investmentSymbol.value = "0050"; investmentShares.value = "20"; },
-        record: () => { recordName.value = "餐飲"; recordAmount.value = "120"; recordType.value = "expense"; }
+        investment: () => { investmentSymbol.value = "0050"; investmentShares.value = "20"; }
       };
       examples[type]?.();
     }
@@ -932,6 +998,29 @@
 
     function deleteButton(kind, id) {
       return `<button class="danger" type="button" aria-label="刪除" onclick="removeItem('${kind}', '${id}')">×</button>`;
+    }
+
+    function accountActions(id) {
+      return `<div class="item-actions">
+        <button class="secondary" type="button" onclick="openEntry('account', '${id}', 'income')">收入</button>
+        <button class="secondary" type="button" onclick="openEntry('account', '${id}', 'expense')">支出</button>
+        ${deleteButton("account", id)}
+      </div>`;
+    }
+
+    function liabilityActions(id) {
+      return `<div class="item-actions">
+        <button class="secondary" type="button" onclick="openEntry('liability', '${id}', 'charge')">消費</button>
+        <button class="secondary" type="button" onclick="openEntry('liability', '${id}', 'payment')">還款</button>
+        ${deleteButton("liability", id)}
+      </div>`;
+    }
+
+    function entryLabel(kind, type) {
+      if (kind === "account" && type === "income") return "收入";
+      if (kind === "account" && type === "expense") return "支出";
+      if (kind === "liability" && type === "charge") return "消費";
+      return "還款";
     }
 
     function emptyHtml(text) {
@@ -989,6 +1078,7 @@
     }
 
     window.removeItem = removeItem;
+    window.openEntry = openEntry;
     render();
   </script>
 </body>
