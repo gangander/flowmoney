@@ -513,7 +513,7 @@
       <form id="investmentForm" class="grid">
         <div>
           <label for="investmentSymbol">代號</label>
-          <input id="investmentSymbol" autocomplete="off" autocapitalize="characters" placeholder="2330 或 AAPL" required>
+          <input id="investmentSymbol" autocomplete="off" autocapitalize="characters" placeholder="2330 或 0050" required>
         </div>
         <div>
           <label for="investmentShares">股數</label>
@@ -569,6 +569,7 @@
     const number = new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 2 });
     const today = new Date();
     const sampleDate = today.toISOString();
+    let priceBookPromise = null;
     let state = loadState();
     const netWorth = document.getElementById("netWorth");
     const assetTotal = document.getElementById("assetTotal");
@@ -784,7 +785,7 @@
           shares,
           price: quote.price,
           currency: quote.currency || "TWD",
-          updatedAt: new Date().toISOString()
+          updatedAt: quote.sourceDate || new Date().toISOString()
         });
         priceStatus.textContent = `已更新 ${quote.symbol}`;
         showToast("已抓到當日價並新增");
@@ -821,7 +822,7 @@
             item.symbol = quote.symbol;
             item.price = quote.price;
             item.currency = quote.currency || item.currency || "TWD";
-            item.updatedAt = new Date().toISOString();
+            item.updatedAt = quote.sourceDate || new Date().toISOString();
             success += 1;
           }
         } catch (error) {
@@ -835,6 +836,13 @@
     }
 
     async function fetchMarketQuote(symbol) {
+      try {
+        const localQuote = await fetchLocalPrice(symbol);
+        if (localQuote) return localQuote;
+      } catch (error) {
+        console.warn(error);
+      }
+
       const candidates = symbolCandidates(symbol);
       for (const candidate of candidates) {
         try {
@@ -845,6 +853,32 @@
         }
       }
       throw new Error("quote failed");
+    }
+
+    async function fetchLocalPrice(symbol) {
+      const clean = symbol.trim().toUpperCase();
+      const code = clean.replace(/\.(TW|TWO)$/i, "");
+      if (!/^\d{4,6}[A-Z]?$/.test(code)) return null;
+
+      const book = await loadPriceBook();
+      const quote = book.prices?.[`${code}.TW`] || book.prices?.[`${code}.TWO`] || book.prices?.[code];
+      if (!quote || !quote.price) return null;
+      return {
+        symbol: quote.symbol,
+        price: Number(quote.price),
+        currency: quote.currency || "TWD",
+        sourceDate: quote.date || book.generatedAt || ""
+      };
+    }
+
+    async function loadPriceBook() {
+      if (!priceBookPromise) {
+        priceBookPromise = fetch(`prices.json?v=${Date.now()}`, { cache: "no-store" }).then(response => {
+          if (!response.ok) throw new Error("prices unavailable");
+          return response.json();
+        });
+      }
+      return priceBookPromise;
     }
 
     async function fetchYahooQuote(symbol) {
