@@ -7,23 +7,24 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FlowMoney">
   <meta name="theme-color" content="#101214">
-  <title>FlowMoney 記帳</title>
+  <title>FlowMoney</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon.svg">
   <style>
     :root {
       color-scheme: dark;
       --bg: #101214;
-      --surface: #191c1f;
-      --surface-2: #24282d;
+      --panel: #191c1f;
+      --panel-2: #22272b;
+      --field: #111416;
       --line: #343a40;
-      --text: #f5f7f8;
+      --text: #f6f8fa;
       --muted: #aab3bc;
       --accent: #2dd4bf;
-      --accent-2: #f7c948;
-      --danger: #ff6b6b;
-      --income: #89e08f;
-      --expense: #ff9f7a;
+      --yellow: #f7c948;
+      --green: #8bdc96;
+      --red: #ff8a7a;
+      --blue: #8bb9ff;
       --radius: 8px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
     }
@@ -36,14 +37,14 @@
       min-height: 100svh;
       margin: 0;
       background:
-        linear-gradient(180deg, rgba(45, 212, 191, 0.08), transparent 300px),
-        var(--bg);
+        radial-gradient(circle at 12% -10%, rgba(45, 212, 191, 0.18), transparent 260px),
+        linear-gradient(180deg, #121619, var(--bg) 360px);
       color: var(--text);
-      padding: calc(14px + env(safe-area-inset-top)) 14px calc(92px + env(safe-area-inset-bottom));
+      padding: calc(14px + env(safe-area-inset-top)) 12px calc(86px + env(safe-area-inset-bottom));
     }
 
     main {
-      width: min(100%, 520px);
+      width: min(100%, 560px);
       margin: 0 auto;
     }
 
@@ -51,8 +52,8 @@
       display: flex;
       align-items: end;
       justify-content: space-between;
-      gap: 16px;
-      margin: 4px 0 14px;
+      gap: 14px;
+      margin: 2px 0 12px;
     }
 
     h1, h2, h3, p {
@@ -60,61 +61,152 @@
     }
 
     h1 {
-      font-size: 24px;
+      font-size: 25px;
       letter-spacing: 0;
     }
 
-    .date {
+    .muted {
       color: var(--muted);
-      font-size: 13px;
-      text-align: right;
-      white-space: nowrap;
+      font-size: 12px;
+      line-height: 1.35;
     }
 
-    .summary {
+    .net-card {
+      background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(139, 185, 255, 0.10)), var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+    }
+
+    .net-row {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .net-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .net-value {
+      margin-top: 5px;
+      font-size: clamp(34px, 11vw, 48px);
+      line-height: 1;
+      font-weight: 950;
+      overflow-wrap: anywhere;
+    }
+
+    .refresh {
+      min-width: 48px;
+      min-height: 44px;
+      border: 1px solid rgba(45, 212, 191, 0.28);
+      background: rgba(45, 212, 191, 0.12);
+      color: var(--accent);
+      border-radius: 7px;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .kpis {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
-      margin-bottom: 12px;
+      margin-top: 14px;
     }
 
-    .metric, .panel {
+    .kpi, .panel, .item {
+      border: 1px solid rgba(255, 255, 255, 0.07);
       background: rgba(25, 28, 31, 0.94);
-      border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: var(--radius);
-      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
     }
 
-    .metric {
-      min-width: 0;
+    .kpi {
       padding: 10px;
+      min-width: 0;
     }
 
-    .metric span {
+    .kpi span, label {
       display: block;
       color: var(--muted);
       font-size: 12px;
+      font-weight: 800;
       line-height: 1.25;
     }
 
-    .metric strong {
+    .kpi strong {
       display: block;
       margin-top: 6px;
-      overflow-wrap: anywhere;
       font-size: 17px;
-      line-height: 1.15;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
     }
 
-    .metric.balance strong {
-      color: var(--accent);
+    .progress {
+      height: 10px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #0f1214;
+      margin-top: 14px;
+    }
+
+    .progress i {
+      display: block;
+      min-width: 3px;
+    }
+
+    .tabs {
+      position: sticky;
+      top: env(safe-area-inset-top);
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      padding: 5px;
+      margin: 10px 0;
+      background: rgba(16, 18, 20, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius);
+      backdrop-filter: blur(14px);
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .tabs button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .tabs button.active {
+      background: var(--panel-2);
+      color: var(--text);
     }
 
     .panel {
+      display: none;
       padding: 14px;
       margin-bottom: 12px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
     }
 
-    .panel-title {
+    .panel.active {
+      display: block;
+    }
+
+    .panel-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -122,83 +214,27 @@
       margin-bottom: 12px;
     }
 
-    .panel-title h2 {
-      font-size: 17px;
+    .panel h2 {
+      font-size: 18px;
     }
 
-    .chart-wrap {
-      height: 310px;
-      overflow: hidden;
-    }
-
-    svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    .empty {
-      height: 100%;
-      display: grid;
-      place-items: center;
-      color: var(--muted);
-      text-align: center;
-      line-height: 1.6;
-      padding: 24px;
-    }
-
-    .mode {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      padding: 4px;
-      background: #111416;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      margin-bottom: 12px;
-    }
-
-    .mode button, .chip, .icon-button, .submit {
-      min-height: 44px;
-      border: 0;
-      border-radius: 7px;
-      font: inherit;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .mode button {
-      background: transparent;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .mode button.active {
-      background: var(--surface-2);
-      color: var(--text);
-    }
-
-    label {
-      display: block;
-      margin: 0 0 6px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .field-grid {
+    .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
 
+    label {
+      margin: 0 0 6px;
+    }
+
     input, select {
       width: 100%;
       min-height: 48px;
-      background: #111416;
       border: 1px solid var(--line);
-      color: var(--text);
       border-radius: var(--radius);
+      background: var(--field);
+      color: var(--text);
       padding: 12px;
       font: inherit;
       font-size: 16px;
@@ -207,134 +243,161 @@
 
     input:focus, select:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.16);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.15);
     }
 
-    .amount-row {
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .actions {
       display: grid;
-      grid-template-columns: 1fr 54px;
-      gap: 10px;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
       margin-top: 10px;
     }
 
-    .icon-button {
-      background: var(--surface-2);
-      color: var(--text);
-      font-size: 22px;
+    .primary, .secondary, .danger {
+      min-height: 46px;
+      border-radius: 7px;
+      border: 0;
+      padding: 0 14px;
+      font-weight: 950;
     }
 
-    .quick {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin: 10px 0 12px;
-    }
-
-    .chip {
-      background: #172023;
-      color: var(--accent);
-      border: 1px solid rgba(45, 212, 191, 0.22);
-      font-weight: 800;
-    }
-
-    .submit {
-      width: 100%;
+    .primary {
       background: var(--accent);
       color: #071010;
-      font-weight: 900;
-      font-size: 17px;
     }
 
-    .history {
+    .secondary {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+
+    .danger {
+      min-width: 42px;
+      background: rgba(255, 138, 122, 0.12);
+      border: 1px solid rgba(255, 138, 122, 0.24);
+      color: var(--red);
+    }
+
+    .list {
       display: grid;
       gap: 8px;
+      margin-top: 12px;
     }
 
-    .record {
+    .item {
       display: grid;
       grid-template-columns: 1fr auto;
       align-items: center;
       gap: 10px;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 11px;
     }
 
-    .record:last-child {
-      border-bottom: 0;
+    .item-main {
+      min-width: 0;
     }
 
-    .route {
+    .item-title {
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 6px;
-      font-weight: 800;
-      line-height: 1.35;
+      gap: 7px;
+      font-weight: 950;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
     }
 
-    .meta {
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 12px;
+    .dot {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: var(--accent);
     }
 
-    .amount {
-      font-weight: 900;
+    .item-value {
+      text-align: right;
+      font-weight: 950;
       white-space: nowrap;
     }
 
-    .amount.income {
-      color: var(--income);
+    .item-sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
     }
 
-    .amount.expense {
-      color: var(--expense);
+    .mini-chart {
+      height: 172px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      align-items: end;
+      gap: 9px;
+      padding-top: 8px;
     }
 
-    .delete {
-      width: 36px;
-      height: 36px;
-      margin-left: 8px;
-      background: rgba(255, 107, 107, 0.12);
-      color: var(--danger);
-      border: 1px solid rgba(255, 107, 107, 0.26);
-      border-radius: 7px;
-      font-size: 18px;
+    .bar {
+      display: grid;
+      align-items: end;
+      gap: 7px;
+      height: 100%;
+    }
+
+    .bar i {
+      min-height: 8px;
+      border-radius: 7px 7px 3px 3px;
+      background: var(--accent);
+    }
+
+    .bar span {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      font-weight: 800;
     }
 
     .toast {
       position: fixed;
-      left: 14px;
-      right: 14px;
-      bottom: calc(18px + env(safe-area-inset-bottom));
-      max-width: 492px;
+      left: 12px;
+      right: 12px;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      max-width: 536px;
       margin: 0 auto;
       padding: 12px 14px;
-      background: #f5f7f8;
+      background: #f6f8fa;
       color: #101214;
       border-radius: var(--radius);
-      font-weight: 800;
+      font-weight: 900;
       transform: translateY(110px);
       transition: transform 180ms ease;
-      z-index: 3;
+      z-index: 4;
     }
 
     .toast.show {
       transform: translateY(0);
     }
 
-    @media (max-width: 380px) {
+    @media (max-width: 390px) {
       body {
         padding-left: 10px;
         padding-right: 10px;
       }
 
-      .summary {
+      .kpis {
         grid-template-columns: 1fr;
       }
 
-      .quick {
-        grid-template-columns: repeat(2, 1fr);
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .full {
+        grid-column: auto;
       }
     }
   </style>
@@ -344,126 +407,208 @@
     <header>
       <div>
         <h1>FlowMoney</h1>
-        <p class="date" id="todayLabel"></p>
+        <p class="muted" id="todayLabel"></p>
       </div>
-      <p class="date">iPhone 記帳</p>
+      <p class="muted" id="priceStatus">股價待更新</p>
     </header>
 
-    <section class="summary" aria-label="本月摘要">
-      <div class="metric">
-        <span>本月收入</span>
-        <strong id="incomeTotal">$0</strong>
+    <section class="net-card">
+      <div class="net-row">
+        <div>
+          <p class="net-label">淨資產</p>
+          <p class="net-value" id="netWorth">$0</p>
+        </div>
+        <button class="refresh" type="button" id="refreshPrices" aria-label="更新股價">↻</button>
       </div>
-      <div class="metric">
-        <span>本月支出</span>
-        <strong id="expenseTotal">$0</strong>
+      <div class="kpis">
+        <div class="kpi">
+          <span>資產</span>
+          <strong id="assetTotal">$0</strong>
+        </div>
+        <div class="kpi">
+          <span>負債</span>
+          <strong id="liabilityTotal">$0</strong>
+        </div>
+        <div class="kpi">
+          <span>投資</span>
+          <strong id="investmentTotal">$0</strong>
+        </div>
       </div>
-      <div class="metric balance">
-        <span>本月結餘</span>
-        <strong id="balanceTotal">$0</strong>
+      <div class="progress" aria-hidden="true">
+        <i id="assetBar" style="background: var(--accent)"></i>
+        <i id="investmentBar" style="background: var(--yellow)"></i>
+        <i id="liabilityBar" style="background: var(--red)"></i>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-title">
-        <h2>資金流向</h2>
-        <span class="date" id="recordCount">0 筆</span>
+    <section class="panel active" id="overviewPanel">
+      <div class="panel-head">
+        <h2>總覽</h2>
+        <span class="muted" id="overviewCount"></span>
       </div>
-      <div class="chart-wrap" id="chart"></div>
+      <div class="mini-chart">
+        <div class="bar"><i id="assetChart"></i><span>資產</span></div>
+        <div class="bar"><i id="investmentChart"></i><span>投資</span></div>
+        <div class="bar"><i id="liabilityChart"></i><span>負債</span></div>
+      </div>
+      <div class="list" id="overviewList"></div>
     </section>
 
-    <section class="panel">
-      <div class="panel-title">
-        <h2>新增一筆</h2>
+    <nav class="tabs" aria-label="功能切換">
+      <button class="active" type="button" data-tab="accountsPanel">帳戶</button>
+      <button type="button" data-tab="liabilitiesPanel">負債</button>
+      <button type="button" data-tab="investmentsPanel">投資</button>
+      <button type="button" data-tab="recordsPanel">流水</button>
+    </nav>
+
+    <section class="panel active" id="accountsPanel">
+      <div class="panel-head">
+        <h2>資產帳戶</h2>
+        <span class="muted">現金 / 銀行 / 電子錢包</span>
       </div>
-
-      <div class="mode" role="tablist" aria-label="記帳模式">
-        <button type="button" class="active" data-mode="expense">支出</button>
-        <button type="button" data-mode="income">收入</button>
-        <button type="button" data-mode="transfer">轉帳</button>
-      </div>
-
-      <form id="entryForm">
-        <div class="field-grid">
-          <div>
-            <label for="fromNode">從哪裡</label>
-            <input id="fromNode" name="fromNode" list="sources" autocomplete="off" required>
-          </div>
-          <div>
-            <label for="toNode">到哪裡</label>
-            <input id="toNode" name="toNode" list="destinations" autocomplete="off" required>
-          </div>
+      <form id="accountForm" class="grid">
+        <div>
+          <label for="accountName">名稱</label>
+          <input id="accountName" autocomplete="off" placeholder="台新銀行" required>
         </div>
-
-        <div class="amount-row">
-          <div>
-            <label for="amount">金額</label>
-            <input id="amount" name="amount" type="number" inputmode="decimal" min="1" step="1" placeholder="0" required>
-          </div>
-          <button class="icon-button" type="button" id="swapButton" aria-label="交換來源與去向">⇄</button>
+        <div>
+          <label for="accountBalance">餘額</label>
+          <input id="accountBalance" type="number" inputmode="decimal" step="1" placeholder="0" required>
         </div>
-
-        <div class="quick" aria-label="快速金額">
-          <button class="chip" type="button" data-amount="50">50</button>
-          <button class="chip" type="button" data-amount="100">100</button>
-          <button class="chip" type="button" data-amount="500">500</button>
-          <button class="chip" type="button" data-amount="1000">1000</button>
+        <div class="full actions">
+          <button class="primary" type="submit">新增資產</button>
+          <button class="secondary" type="button" data-fill="account">範例</button>
         </div>
-
-        <button class="submit" type="submit">記下來</button>
       </form>
+      <div class="list" id="accountList"></div>
     </section>
 
-    <section class="panel">
-      <div class="panel-title">
-        <h2>最近紀錄</h2>
-        <button class="delete" type="button" id="clearButton" aria-label="清空紀錄">×</button>
+    <section class="panel" id="liabilitiesPanel">
+      <div class="panel-head">
+        <h2>負債</h2>
+        <span class="muted">信用卡 / 貸款 / 分期</span>
       </div>
-      <div class="history" id="historyList"></div>
+      <form id="liabilityForm" class="grid">
+        <div>
+          <label for="liabilityName">名稱</label>
+          <input id="liabilityName" autocomplete="off" placeholder="信用卡" required>
+        </div>
+        <div>
+          <label for="liabilityBalance">目前欠款</label>
+          <input id="liabilityBalance" type="number" inputmode="decimal" step="1" placeholder="0" required>
+        </div>
+        <div class="full actions">
+          <button class="primary" type="submit">新增負債</button>
+          <button class="secondary" type="button" data-fill="liability">範例</button>
+        </div>
+      </form>
+      <div class="list" id="liabilityList"></div>
+    </section>
+
+    <section class="panel" id="investmentsPanel">
+      <div class="panel-head">
+        <h2>投資</h2>
+        <span class="muted">股票 / ETF / 基金</span>
+      </div>
+      <form id="investmentForm" class="grid">
+        <div>
+          <label for="investmentSymbol">代號</label>
+          <input id="investmentSymbol" autocomplete="off" autocapitalize="characters" placeholder="2330.TW" required>
+        </div>
+        <div>
+          <label for="investmentShares">股數</label>
+          <input id="investmentShares" type="number" inputmode="decimal" step="0.001" placeholder="0" required>
+        </div>
+        <div>
+          <label for="investmentCost">買入均價</label>
+          <input id="investmentCost" type="number" inputmode="decimal" step="0.01" placeholder="0">
+        </div>
+        <div>
+          <label for="investmentPrice">目前市價</label>
+          <input id="investmentPrice" type="number" inputmode="decimal" step="0.01" placeholder="可自動更新">
+        </div>
+        <div class="full actions">
+          <button class="primary" type="submit">新增投資</button>
+          <button class="secondary" type="button" data-fill="investment">範例</button>
+        </div>
+      </form>
+      <div class="list" id="investmentList"></div>
+    </section>
+
+    <section class="panel" id="recordsPanel">
+      <div class="panel-head">
+        <h2>流水</h2>
+        <span class="muted">會同步調整帳戶餘額</span>
+      </div>
+      <form id="recordForm" class="grid">
+        <div>
+          <label for="recordAccount">帳戶</label>
+          <select id="recordAccount" required></select>
+        </div>
+        <div>
+          <label for="recordType">類型</label>
+          <select id="recordType">
+            <option value="expense">支出</option>
+            <option value="income">收入</option>
+          </select>
+        </div>
+        <div>
+          <label for="recordName">項目</label>
+          <input id="recordName" autocomplete="off" placeholder="餐飲" required>
+        </div>
+        <div>
+          <label for="recordAmount">金額</label>
+          <input id="recordAmount" type="number" inputmode="decimal" step="1" placeholder="0" required>
+        </div>
+        <div class="full actions">
+          <button class="primary" type="submit">記一筆</button>
+          <button class="secondary" type="button" data-fill="record">範例</button>
+        </div>
+      </form>
+      <div class="list" id="recordList"></div>
     </section>
   </main>
-
-  <datalist id="sources">
-    <option value="薪水">
-    <option value="現金">
-    <option value="銀行">
-    <option value="信用卡">
-    <option value="悠遊卡">
-    <option value="投資帳戶">
-  </datalist>
-
-  <datalist id="destinations">
-    <option value="餐飲">
-    <option value="交通">
-    <option value="日用品">
-    <option value="娛樂">
-    <option value="房租">
-    <option value="水電">
-    <option value="儲蓄">
-    <option value="投資">
-  </datalist>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const storageKey = "flowmoney-records-v1";
-    const today = new Date();
-    let mode = "expense";
-    let records = JSON.parse(localStorage.getItem(storageKey) || "null") || [
-      { from: "薪水", to: "銀行", amount: 50000, mode: "income", createdAt: new Date(today.getFullYear(), today.getMonth(), 1).toISOString() },
-      { from: "銀行", to: "餐飲", amount: 320, mode: "expense", createdAt: new Date().toISOString() },
-      { from: "銀行", to: "交通", amount: 120, mode: "expense", createdAt: new Date().toISOString() },
-      { from: "銀行", to: "儲蓄", amount: 5000, mode: "transfer", createdAt: new Date().toISOString() }
-    ];
-
-    const form = document.getElementById("entryForm");
-    const fromInput = document.getElementById("fromNode");
-    const toInput = document.getElementById("toNode");
-    const amountInput = document.getElementById("amount");
-    const chart = document.getElementById("chart");
-    const historyList = document.getElementById("historyList");
-    const toast = document.getElementById("toast");
+    const storeKey = "flowmoney-percento-style-v1";
     const money = new Intl.NumberFormat("zh-TW", { style: "currency", currency: "TWD", maximumFractionDigits: 0 });
+    const number = new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 2 });
+    const today = new Date();
+    const sampleDate = today.toISOString();
+    let state = loadState();
+    const netWorth = document.getElementById("netWorth");
+    const assetTotal = document.getElementById("assetTotal");
+    const liabilityTotal = document.getElementById("liabilityTotal");
+    const investmentTotal = document.getElementById("investmentTotal");
+    const overviewCount = document.getElementById("overviewCount");
+    const assetBar = document.getElementById("assetBar");
+    const investmentBar = document.getElementById("investmentBar");
+    const liabilityBar = document.getElementById("liabilityBar");
+    const assetChart = document.getElementById("assetChart");
+    const investmentChart = document.getElementById("investmentChart");
+    const liabilityChart = document.getElementById("liabilityChart");
+    const overviewList = document.getElementById("overviewList");
+    const accountList = document.getElementById("accountList");
+    const liabilityList = document.getElementById("liabilityList");
+    const investmentList = document.getElementById("investmentList");
+    const recordList = document.getElementById("recordList");
+    const accountName = document.getElementById("accountName");
+    const accountBalance = document.getElementById("accountBalance");
+    const liabilityName = document.getElementById("liabilityName");
+    const liabilityBalance = document.getElementById("liabilityBalance");
+    const investmentSymbol = document.getElementById("investmentSymbol");
+    const investmentShares = document.getElementById("investmentShares");
+    const investmentCost = document.getElementById("investmentCost");
+    const investmentPrice = document.getElementById("investmentPrice");
+    const recordAccount = document.getElementById("recordAccount");
+    const recordType = document.getElementById("recordType");
+    const recordName = document.getElementById("recordName");
+    const recordAmount = document.getElementById("recordAmount");
+    const priceStatus = document.getElementById("priceStatus");
+    const refreshPrices = document.getElementById("refreshPrices");
+    const toast = document.getElementById("toast");
 
     document.getElementById("todayLabel").textContent = new Intl.DateTimeFormat("zh-TW", {
       month: "long",
@@ -471,208 +616,296 @@
       weekday: "short"
     }).format(today);
 
-    document.querySelectorAll("[data-mode]").forEach(button => {
+    document.querySelectorAll("[data-tab]").forEach(button => {
       button.addEventListener("click", () => {
-        mode = button.dataset.mode;
-        document.querySelectorAll("[data-mode]").forEach(item => item.classList.toggle("active", item === button));
-        applyModeDefaults();
+        document.querySelectorAll("[data-tab]").forEach(tab => tab.classList.toggle("active", tab === button));
+        document.querySelectorAll("main > .panel:not(#overviewPanel)").forEach(panel => panel.classList.remove("active"));
+        document.getElementById(button.dataset.tab).classList.add("active");
       });
     });
 
-    document.querySelectorAll("[data-amount]").forEach(button => {
-      button.addEventListener("click", () => {
-        amountInput.value = button.dataset.amount;
-        amountInput.focus();
-      });
+    document.querySelectorAll("[data-fill]").forEach(button => {
+      button.addEventListener("click", () => fillExample(button.dataset.fill));
     });
 
-    document.getElementById("swapButton").addEventListener("click", () => {
-      const previousFrom = fromInput.value;
-      fromInput.value = toInput.value;
-      toInput.value = previousFrom;
-    });
-
-    document.getElementById("clearButton").addEventListener("click", () => {
-      if (!records.length) return;
-      if (confirm("要清空所有紀錄嗎？")) {
-        records = [];
-        save();
-        render();
-        showToast("已清空紀錄");
-      }
-    });
-
-    form.addEventListener("submit", event => {
+    document.getElementById("accountForm").addEventListener("submit", event => {
       event.preventDefault();
-      const from = fromInput.value.trim();
-      const to = toInput.value.trim();
-      const amount = Number(amountInput.value);
-
-      if (!from || !to || !Number.isFinite(amount) || amount <= 0) {
-        showToast("請填入來源、去向與正確金額");
-        return;
-      }
-
-      records.push({ from, to, amount, mode, createdAt: new Date().toISOString() });
-      save();
-      form.reset();
-      applyModeDefaults();
-      render();
-      showToast("已新增一筆");
+      addAccount(accountName.value.trim(), toNumber(accountBalance.value));
+      event.target.reset();
     });
 
-    function applyModeDefaults() {
-      if (mode === "expense") {
-        fromInput.placeholder = "銀行、現金、信用卡";
-        toInput.placeholder = "餐飲、交通、日用品";
-      } else if (mode === "income") {
-        fromInput.placeholder = "薪水、獎金、副業";
-        toInput.placeholder = "銀行、現金";
-      } else {
-        fromInput.placeholder = "銀行";
-        toInput.placeholder = "儲蓄、投資、現金";
-      }
+    document.getElementById("liabilityForm").addEventListener("submit", event => {
+      event.preventDefault();
+      addLiability(liabilityName.value.trim(), toNumber(liabilityBalance.value));
+      event.target.reset();
+    });
+
+    document.getElementById("investmentForm").addEventListener("submit", event => {
+      event.preventDefault();
+      addInvestment({
+        symbol: investmentSymbol.value.trim().toUpperCase(),
+        shares: toNumber(investmentShares.value),
+        cost: toNumber(investmentCost.value),
+        price: toNumber(investmentPrice.value)
+      });
+      event.target.reset();
+    });
+
+    document.getElementById("recordForm").addEventListener("submit", event => {
+      event.preventDefault();
+      addRecord(recordAccount.value, recordType.value, recordName.value.trim(), toNumber(recordAmount.value));
+      event.target.reset();
+    });
+
+    document.getElementById("refreshPrices").addEventListener("click", updatePrices);
+
+    function loadState() {
+      const saved = JSON.parse(localStorage.getItem(storeKey) || "null");
+      if (saved) return saved;
+      return {
+        accounts: [
+          { id: uid(), name: "銀行", balance: 82000, color: "#2dd4bf" },
+          { id: uid(), name: "現金", balance: 3600, color: "#8bb9ff" }
+        ],
+        liabilities: [
+          { id: uid(), name: "信用卡", balance: 12800, color: "#ff8a7a" }
+        ],
+        investments: [
+          { id: uid(), symbol: "2330.TW", shares: 10, cost: 850, price: 950, currency: "TWD", updatedAt: "" }
+        ],
+        records: [
+          { id: uid(), accountId: "", type: "expense", name: "餐飲", amount: 320, createdAt: sampleDate }
+        ]
+      };
     }
 
     function save() {
-      localStorage.setItem(storageKey, JSON.stringify(records));
+      localStorage.setItem(storeKey, JSON.stringify(state));
     }
 
     function render() {
-      renderSummary();
-      renderChart();
-      renderHistory();
-    }
-
-    function renderSummary() {
-      const monthKey = `${today.getFullYear()}-${today.getMonth()}`;
-      const currentMonth = records.filter(record => {
-        const date = new Date(record.createdAt);
-        return `${date.getFullYear()}-${date.getMonth()}` === monthKey;
-      });
-      const income = sum(currentMonth.filter(record => record.mode === "income"));
-      const expense = sum(currentMonth.filter(record => record.mode === "expense"));
-      document.getElementById("incomeTotal").textContent = money.format(income);
-      document.getElementById("expenseTotal").textContent = money.format(expense);
-      document.getElementById("balanceTotal").textContent = money.format(income - expense);
-      document.getElementById("recordCount").textContent = `${records.length} 筆`;
-    }
-
-    function renderChart() {
-      if (!records.length) {
-        chart.innerHTML = `<div class="empty">還沒有紀錄。<br>新增一筆後，這裡會顯示你的資金流向。</div>`;
-        return;
-      }
-
-      const flows = aggregateFlows(records);
-      const maxAmount = Math.max(...flows.map(flow => flow.amount), 1);
-      const height = 300;
-      const width = 420;
-      const leftNodes = unique(flows.map(flow => flow.from));
-      const rightNodes = unique(flows.map(flow => flow.to));
-      const leftPositions = new Map();
-      const rightPositions = new Map();
-
-      placeNodes(leftNodes, 22, height, leftPositions);
-      placeNodes(rightNodes, width - 114, height, rightPositions);
-
-      const paths = flows.map((flow, index) => {
-        const start = leftPositions.get(flow.from) || { x: 22, y: height / 2 };
-        const end = rightPositions.get(flow.to) || { x: width - 114, y: height / 2 };
-        const thickness = 2 + (flow.amount / maxAmount) * 16;
-        const color = flow.mode === "income" ? "var(--income)" : flow.mode === "expense" ? "var(--expense)" : "var(--accent)";
-        return `<path d="M ${start.x + 92} ${start.y} C ${start.x + 170} ${start.y}, ${end.x - 78} ${end.y}, ${end.x} ${end.y}" stroke="${color}" stroke-width="${thickness}" stroke-linecap="round" opacity="0.44" fill="none">
-          <title>${escapeHtml(flow.from)} 到 ${escapeHtml(flow.to)}：${money.format(flow.amount)}</title>
-        </path>`;
-      }).join("");
-
-      const labels = [
-        ...leftNodes.map(node => nodeLabel(node, leftPositions.get(node))),
-        ...rightNodes.map(node => nodeLabel(node, rightPositions.get(node)))
-      ].join("");
-
-      chart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="資金流向圖">${paths}${labels}</svg>`;
-    }
-
-    function nodeLabel(node, position) {
-      if (!position) return "";
-      return `<g transform="translate(${position.x}, ${position.y - 17})">
-          <rect width="92" height="34" rx="7" fill="#24282d" stroke="#343a40"></rect>
-          <text x="46" y="21" text-anchor="middle" fill="#f5f7f8" font-size="12" font-weight="700">${escapeHtml(shortLabel(node))}</text>
-        </g>`;
-    }
-
-    function placeNodes(list, x, height, positions) {
-      const gap = height / (list.length + 1);
-      list.forEach((node, index) => {
-        positions.set(node, { x, y: gap * (index + 1) });
-      });
-    }
-
-    function renderHistory() {
-      if (!records.length) {
-        historyList.innerHTML = `<div class="empty">目前沒有紀錄</div>`;
-        return;
-      }
-
-      historyList.innerHTML = records.slice().reverse().slice(0, 12).map((record, index) => {
-        const realIndex = records.length - 1 - index;
-        const date = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(record.createdAt));
-        return `<div class="record">
-          <div>
-            <div class="route"><span>${escapeHtml(record.from)}</span><span>→</span><span>${escapeHtml(record.to)}</span></div>
-            <div class="meta">${date} · ${modeLabel(record.mode)}</div>
-          </div>
-          <div>
-            <span class="amount ${record.mode}">${money.format(record.amount)}</span>
-            <button class="delete" type="button" aria-label="刪除這筆" onclick="deleteRecord(${realIndex})">×</button>
-          </div>
-        </div>`;
-      }).join("");
-    }
-
-    function deleteRecord(index) {
-      records.splice(index, 1);
+      const totals = getTotals();
+      netWorth.textContent = money.format(totals.net);
+      assetTotal.textContent = money.format(totals.assets);
+      liabilityTotal.textContent = money.format(totals.liabilities);
+      investmentTotal.textContent = money.format(totals.investments);
+      overviewCount.textContent = `${state.accounts.length + state.liabilities.length + state.investments.length} 個項目`;
+      renderBars(totals);
+      renderAccounts();
+      renderLiabilities();
+      renderInvestments();
+      renderRecords();
+      renderOverview(totals);
       save();
+    }
+
+    function getTotals() {
+      const accountAssets = sum(state.accounts, "balance");
+      const investments = state.investments.reduce((total, item) => total + item.shares * item.price, 0);
+      const liabilities = sum(state.liabilities, "balance");
+      return { assets: accountAssets + investments, accountAssets, investments, liabilities, net: accountAssets + investments - liabilities };
+    }
+
+    function renderBars(totals) {
+      const scale = Math.max(totals.accountAssets, totals.investments, totals.liabilities, 1);
+      assetBar.style.width = `${percent(totals.accountAssets, totals.assets + totals.liabilities)}%`;
+      investmentBar.style.width = `${percent(totals.investments, totals.assets + totals.liabilities)}%`;
+      liabilityBar.style.width = `${percent(totals.liabilities, totals.assets + totals.liabilities)}%`;
+      assetChart.style.height = `${Math.max(6, percent(totals.accountAssets, scale))}%`;
+      investmentChart.style.height = `${Math.max(6, percent(totals.investments, scale))}%`;
+      liabilityChart.style.height = `${Math.max(6, percent(totals.liabilities, scale))}%`;
+      assetChart.style.background = "var(--accent)";
+      investmentChart.style.background = "var(--yellow)";
+      liabilityChart.style.background = "var(--red)";
+    }
+
+    function renderOverview(totals) {
+      const rows = [
+        { title: "可動用資產", value: totals.accountAssets, sub: `${state.accounts.length} 個帳戶`, color: "var(--accent)" },
+        { title: "投資市值", value: totals.investments, sub: `${state.investments.length} 檔標的`, color: "var(--yellow)" },
+        { title: "總負債", value: totals.liabilities, sub: `${state.liabilities.length} 筆負債`, color: "var(--red)" }
+      ];
+      overviewList.innerHTML = rows.map(row => itemHtml(row.title, money.format(row.value), row.sub, row.color, "")).join("");
+    }
+
+    function renderAccounts() {
+      recordAccount.innerHTML = state.accounts.map(account => `<option value="${account.id}">${escapeHtml(account.name)}</option>`).join("");
+      accountList.innerHTML = state.accounts.map(account => itemHtml(
+        account.name,
+        money.format(account.balance),
+        "資產帳戶",
+        account.color,
+        deleteButton("account", account.id)
+      )).join("") || emptyHtml("尚未建立資產帳戶");
+    }
+
+    function renderLiabilities() {
+      liabilityList.innerHTML = state.liabilities.map(item => itemHtml(
+        item.name,
+        money.format(item.balance),
+        "負債",
+        item.color,
+        deleteButton("liability", item.id)
+      )).join("") || emptyHtml("尚未建立負債");
+    }
+
+    function renderInvestments() {
+      investmentList.innerHTML = state.investments.map(item => {
+        const value = item.shares * item.price;
+        const cost = item.shares * item.cost;
+        const gain = value - cost;
+        const gainText = item.cost ? `損益 ${money.format(gain)} · ${gain >= 0 ? "+" : ""}${number.format(percent(gain, cost))}%` : "未填買入均價";
+        const sub = `${number.format(item.shares)} 股 · 現價 ${number.format(item.price)} ${item.currency || "TWD"} · ${gainText}`;
+        return itemHtml(item.symbol, money.format(value), sub, "var(--yellow)", deleteButton("investment", item.id));
+      }).join("") || emptyHtml("尚未建立投資標的");
+    }
+
+    function renderRecords() {
+      recordList.innerHTML = state.records.slice().reverse().slice(0, 20).map(record => {
+        const account = state.accounts.find(item => item.id === record.accountId);
+        const sign = record.type === "income" ? "+" : "-";
+        const color = record.type === "income" ? "var(--green)" : "var(--red)";
+        const date = new Intl.DateTimeFormat("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(record.createdAt));
+        return itemHtml(record.name, `${sign}${money.format(record.amount)}`, `${account?.name || "帳戶"} · ${date}`, color, deleteButton("record", record.id));
+      }).join("") || emptyHtml("尚未建立流水紀錄");
+    }
+
+    function addAccount(name, balance) {
+      if (!name || !validAmount(balance, true)) return showToast("請填入資產名稱與餘額");
+      state.accounts.push({ id: uid(), name, balance, color: pickColor(state.accounts.length) });
+      showToast("已新增資產");
       render();
+    }
+
+    function addLiability(name, balance) {
+      if (!name || !validAmount(balance, true)) return showToast("請填入負債名稱與金額");
+      state.liabilities.push({ id: uid(), name, balance, color: "#ff8a7a" });
+      showToast("已新增負債");
+      render();
+    }
+
+    function addInvestment(item) {
+      if (!item.symbol || !validAmount(item.shares) || !validAmount(item.price, true)) return showToast("請填入代號、股數與市價");
+      state.investments.push({ id: uid(), currency: "TWD", updatedAt: "", ...item });
+      showToast("已新增投資");
+      render();
+    }
+
+    function addRecord(accountId, type, name, amount) {
+      const account = state.accounts.find(item => item.id === accountId);
+      if (!account || !name || !validAmount(amount)) return showToast("請填入帳戶、項目與金額");
+      account.balance += type === "income" ? amount : -amount;
+      state.records.push({ id: uid(), accountId, type, name, amount, createdAt: new Date().toISOString() });
+      showToast("已記一筆");
+      render();
+    }
+
+    async function updatePrices() {
+      if (!state.investments.length) return showToast("尚未建立投資標的");
+      priceStatus.textContent = "更新中";
+      refreshPrices.disabled = true;
+      let success = 0;
+      for (const item of state.investments) {
+        try {
+          const quote = await fetchYahooQuote(item.symbol);
+          if (quote.price > 0) {
+            item.price = quote.price;
+            item.currency = quote.currency || item.currency || "TWD";
+            item.updatedAt = new Date().toISOString();
+            success += 1;
+          }
+        } catch (error) {
+          console.warn(error);
+        }
+      }
+      refreshPrices.disabled = false;
+      priceStatus.textContent = success ? `已更新 ${success} 檔` : "更新失敗";
+      showToast(success ? "股價已更新" : "無法更新股價，請手動填市價");
+      render();
+    }
+
+    async function fetchYahooQuote(symbol) {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("quote failed");
+      const data = await response.json();
+      const result = data.chart?.result?.[0];
+      const meta = result?.meta || {};
+      return { price: Number(meta.regularMarketPrice || meta.previousClose || 0), currency: meta.currency || "TWD" };
+    }
+
+    function removeItem(kind, id) {
+      if (kind === "account") state.accounts = state.accounts.filter(item => item.id !== id);
+      if (kind === "liability") state.liabilities = state.liabilities.filter(item => item.id !== id);
+      if (kind === "investment") state.investments = state.investments.filter(item => item.id !== id);
+      if (kind === "record") state.records = state.records.filter(item => item.id !== id);
       showToast("已刪除");
+      render();
     }
 
-    function aggregateFlows(items) {
-      const map = new Map();
-      items.forEach(record => {
-        const key = `${record.from}|||${record.to}|||${record.mode}`;
-        const current = map.get(key) || { from: record.from, to: record.to, mode: record.mode, amount: 0 };
-        current.amount += Number(record.amount) || 0;
-        map.set(key, current);
-      });
-      return Array.from(map.values()).sort((a, b) => b.amount - a.amount).slice(0, 10);
+    function fillExample(type) {
+      const examples = {
+        account: () => { accountName.value = "活存"; accountBalance.value = "30000"; },
+        liability: () => { liabilityName.value = "信用卡"; liabilityBalance.value = "6800"; },
+        investment: () => { investmentSymbol.value = "0050.TW"; investmentShares.value = "20"; investmentCost.value = "145"; investmentPrice.value = "155"; },
+        record: () => { recordName.value = "餐飲"; recordAmount.value = "120"; recordType.value = "expense"; }
+      };
+      examples[type]?.();
     }
 
-    function unique(items) {
-      return Array.from(new Set(items));
+    function itemHtml(title, value, sub, color, action) {
+      return `<div class="item">
+        <div class="item-main">
+          <div class="item-title"><span class="dot" style="background:${color}"></span><span>${escapeHtml(title)}</span></div>
+          <div class="item-sub">${escapeHtml(sub)}</div>
+        </div>
+        <div>
+          <div class="item-value" style="color:${color}">${escapeHtml(value)}</div>
+          ${action}
+        </div>
+      </div>`;
     }
 
-    function sum(items) {
-      return items.reduce((total, item) => total + Number(item.amount || 0), 0);
+    function deleteButton(kind, id) {
+      return `<button class="danger" type="button" aria-label="刪除" onclick="removeItem('${kind}', '${id}')">×</button>`;
     }
 
-    function modeLabel(value) {
-      return value === "income" ? "收入" : value === "transfer" ? "轉帳" : "支出";
+    function emptyHtml(text) {
+      return `<div class="item"><div class="item-main"><div class="item-title">${escapeHtml(text)}</div></div></div>`;
     }
 
-    function shortLabel(value) {
-      return value.length > 5 ? `${value.slice(0, 5)}…` : value;
+    function percent(value, total) {
+      return total ? Math.max(0, (value / total) * 100) : 0;
+    }
+
+    function sum(items, key) {
+      return items.reduce((total, item) => total + Number(item[key] || 0), 0);
+    }
+
+    function toNumber(value) {
+      return Number(value || 0);
+    }
+
+    function validAmount(value, allowZero = false) {
+      return Number.isFinite(value) && (allowZero ? value >= 0 : value > 0);
+    }
+
+    function uid() {
+      return Math.random().toString(36).slice(2, 10);
+    }
+
+    function pickColor(index) {
+      return ["#2dd4bf", "#8bb9ff", "#8bdc96", "#f7c948"][index % 4];
     }
 
     function escapeHtml(value) {
-      return String(value).replace(/[&<>"']/g, character => ({
+      return String(value).replace(/[&<>"']/g, char => ({
         "&": "&amp;",
         "<": "&lt;",
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#039;"
-      })[character]);
+      })[char]);
     }
 
     function showToast(message) {
@@ -682,8 +915,7 @@
       showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1800);
     }
 
-    window.deleteRecord = deleteRecord;
-    applyModeDefaults();
+    window.removeItem = removeItem;
     render();
   </script>
 </body>
