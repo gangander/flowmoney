@@ -513,22 +513,14 @@
       <form id="investmentForm" class="grid">
         <div>
           <label for="investmentSymbol">代號</label>
-          <input id="investmentSymbol" autocomplete="off" autocapitalize="characters" placeholder="2330.TW" required>
+          <input id="investmentSymbol" autocomplete="off" autocapitalize="characters" placeholder="2330 或 AAPL" required>
         </div>
         <div>
           <label for="investmentShares">股數</label>
           <input id="investmentShares" type="number" inputmode="decimal" step="0.001" placeholder="0" required>
         </div>
-        <div>
-          <label for="investmentCost">買入均價</label>
-          <input id="investmentCost" type="number" inputmode="decimal" step="0.01" placeholder="0">
-        </div>
-        <div>
-          <label for="investmentPrice">目前市價</label>
-          <input id="investmentPrice" type="number" inputmode="decimal" step="0.01" placeholder="可自動更新">
-        </div>
         <div class="full actions">
-          <button class="primary" type="submit">新增投資</button>
+          <button class="primary" type="submit" id="addInvestmentButton">抓價並新增</button>
           <button class="secondary" type="button" data-fill="investment">範例</button>
         </div>
       </form>
@@ -600,8 +592,7 @@
     const liabilityBalance = document.getElementById("liabilityBalance");
     const investmentSymbol = document.getElementById("investmentSymbol");
     const investmentShares = document.getElementById("investmentShares");
-    const investmentCost = document.getElementById("investmentCost");
-    const investmentPrice = document.getElementById("investmentPrice");
+    const addInvestmentButton = document.getElementById("addInvestmentButton");
     const recordAccount = document.getElementById("recordAccount");
     const recordType = document.getElementById("recordType");
     const recordName = document.getElementById("recordName");
@@ -640,15 +631,10 @@
       event.target.reset();
     });
 
-    document.getElementById("investmentForm").addEventListener("submit", event => {
+    document.getElementById("investmentForm").addEventListener("submit", async event => {
       event.preventDefault();
-      addInvestment({
-        symbol: investmentSymbol.value.trim().toUpperCase(),
-        shares: toNumber(investmentShares.value),
-        cost: toNumber(investmentCost.value),
-        price: toNumber(investmentPrice.value)
-      });
-      event.target.reset();
+      const added = await addInvestment(investmentSymbol.value.trim().toUpperCase(), toNumber(investmentShares.value));
+      if (added) event.target.reset();
     });
 
     document.getElementById("recordForm").addEventListener("submit", event => {
@@ -671,7 +657,7 @@
           { id: uid(), name: "信用卡", balance: 12800, color: "#ff8a7a" }
         ],
         investments: [
-          { id: uid(), symbol: "2330.TW", shares: 10, cost: 850, price: 950, currency: "TWD", updatedAt: "" }
+          { id: uid(), symbol: "2330.TW", shares: 10, price: 950, currency: "TWD", updatedAt: "" }
         ],
         records: [
           { id: uid(), accountId: "", type: "expense", name: "餐飲", amount: 320, createdAt: sampleDate }
@@ -752,10 +738,8 @@
     function renderInvestments() {
       investmentList.innerHTML = state.investments.map(item => {
         const value = item.shares * item.price;
-        const cost = item.shares * item.cost;
-        const gain = value - cost;
-        const gainText = item.cost ? `損益 ${money.format(gain)} · ${gain >= 0 ? "+" : ""}${number.format(percent(gain, cost))}%` : "未填買入均價";
-        const sub = `${number.format(item.shares)} 股 · 現價 ${number.format(item.price)} ${item.currency || "TWD"} · ${gainText}`;
+        const updated = item.updatedAt ? formatTime(item.updatedAt) : "尚未更新";
+        const sub = `${number.format(item.shares)} 股 · 當日價 ${number.format(item.price)} ${item.currency || "TWD"} · ${updated}`;
         return itemHtml(item.symbol, money.format(value), sub, "var(--yellow)", deleteButton("investment", item.id));
       }).join("") || emptyHtml("尚未建立投資標的");
     }
@@ -784,11 +768,36 @@
       render();
     }
 
-    function addInvestment(item) {
-      if (!item.symbol || !validAmount(item.shares) || !validAmount(item.price, true)) return showToast("請填入代號、股數與市價");
-      state.investments.push({ id: uid(), currency: "TWD", updatedAt: "", ...item });
-      showToast("已新增投資");
-      render();
+    async function addInvestment(symbol, shares) {
+      if (!symbol || !validAmount(shares)) {
+        showToast("請填入代號與股數");
+        return false;
+      }
+      addInvestmentButton.disabled = true;
+      addInvestmentButton.textContent = "抓價中";
+      priceStatus.textContent = "抓價中";
+      try {
+        const quote = await fetchMarketQuote(symbol);
+        state.investments.push({
+          id: uid(),
+          symbol: quote.symbol,
+          shares,
+          price: quote.price,
+          currency: quote.currency || "TWD",
+          updatedAt: new Date().toISOString()
+        });
+        priceStatus.textContent = `已更新 ${quote.symbol}`;
+        showToast("已抓到當日價並新增");
+        render();
+        return true;
+      } catch (error) {
+        showToast("抓不到價格，請確認代號");
+        priceStatus.textContent = "抓價失敗";
+        return false;
+      } finally {
+        addInvestmentButton.disabled = false;
+        addInvestmentButton.textContent = "抓價並新增";
+      }
     }
 
     function addRecord(accountId, type, name, amount) {
@@ -807,8 +816,9 @@
       let success = 0;
       for (const item of state.investments) {
         try {
-          const quote = await fetchYahooQuote(item.symbol);
+          const quote = await fetchMarketQuote(item.symbol);
           if (quote.price > 0) {
+            item.symbol = quote.symbol;
             item.price = quote.price;
             item.currency = quote.currency || item.currency || "TWD";
             item.updatedAt = new Date().toISOString();
@@ -820,8 +830,21 @@
       }
       refreshPrices.disabled = false;
       priceStatus.textContent = success ? `已更新 ${success} 檔` : "更新失敗";
-      showToast(success ? "股價已更新" : "無法更新股價，請手動填市價");
+      showToast(success ? "股價已更新" : "無法更新股價，請確認代號");
       render();
+    }
+
+    async function fetchMarketQuote(symbol) {
+      const candidates = symbolCandidates(symbol);
+      for (const candidate of candidates) {
+        try {
+          const quote = await fetchYahooQuote(candidate);
+          if (quote.price > 0) return quote;
+        } catch (error) {
+          console.warn(error);
+        }
+      }
+      throw new Error("quote failed");
     }
 
     async function fetchYahooQuote(symbol) {
@@ -831,7 +854,14 @@
       const data = await response.json();
       const result = data.chart?.result?.[0];
       const meta = result?.meta || {};
-      return { price: Number(meta.regularMarketPrice || meta.previousClose || 0), currency: meta.currency || "TWD" };
+      const price = Number(meta.regularMarketPrice || meta.previousClose || 0);
+      return { symbol: meta.symbol || symbol, price, currency: meta.currency || "TWD" };
+    }
+
+    function symbolCandidates(symbol) {
+      const clean = symbol.trim().toUpperCase();
+      if (/^\d{4,6}$/.test(clean)) return [`${clean}.TW`, `${clean}.TWO`];
+      return [clean];
     }
 
     function removeItem(kind, id) {
@@ -847,7 +877,7 @@
       const examples = {
         account: () => { accountName.value = "活存"; accountBalance.value = "30000"; },
         liability: () => { liabilityName.value = "信用卡"; liabilityBalance.value = "6800"; },
-        investment: () => { investmentSymbol.value = "0050.TW"; investmentShares.value = "20"; investmentCost.value = "145"; investmentPrice.value = "155"; },
+        investment: () => { investmentSymbol.value = "0050"; investmentShares.value = "20"; },
         record: () => { recordName.value = "餐飲"; recordAmount.value = "120"; recordType.value = "expense"; }
       };
       examples[type]?.();
@@ -888,6 +918,15 @@
 
     function validAmount(value, allowZero = false) {
       return Number.isFinite(value) && (allowZero ? value >= 0 : value > 0);
+    }
+
+    function formatTime(value) {
+      return new Intl.DateTimeFormat("zh-TW", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(new Date(value));
     }
 
     function uid() {
