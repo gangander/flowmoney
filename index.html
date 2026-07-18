@@ -451,7 +451,7 @@
         <h1>FlowMoney</h1>
         <p class="muted" id="todayLabel"></p>
       </div>
-      <p class="muted" id="priceStatus">股價待更新</p>
+      <p class="muted" id="priceStatus">收盤價待更新</p>
     </header>
 
     <section class="net-card">
@@ -783,7 +783,7 @@
       investmentList.innerHTML = state.investments.map(item => {
         const value = item.shares * item.price;
         const updated = item.updatedAt ? formatTime(item.updatedAt) : "尚未更新";
-        const sub = `${number.format(item.shares)} 股 · 當日價 ${number.format(item.price)} ${item.currency || "TWD"} · ${updated}`;
+        const sub = `${number.format(item.shares)} 股 · 最近收盤 ${number.format(item.price)} ${item.currency || "TWD"} · ${updated}`;
         return itemHtml(item.symbol, money.format(value), sub, "var(--yellow)", deleteButton("investment", item.id));
       }).join("") || emptyHtml("尚未建立投資標的");
     }
@@ -809,7 +809,7 @@
       }
       addInvestmentButton.disabled = true;
       addInvestmentButton.textContent = "抓價中";
-      priceStatus.textContent = "抓價中";
+      priceStatus.textContent = "讀取價格表";
       try {
         const quote = await fetchMarketQuote(symbol);
         state.investments.push({
@@ -821,12 +821,12 @@
           updatedAt: quote.sourceDate || new Date().toISOString()
         });
         priceStatus.textContent = `已更新 ${quote.symbol}`;
-        showToast("已抓到當日價並新增");
+        showToast("已用最近收盤價新增");
         render();
         return true;
       } catch (error) {
-        showToast("抓不到價格，請確認代號");
-        priceStatus.textContent = "抓價失敗";
+        showToast("價格表沒有這個台股代號");
+        priceStatus.textContent = "查無代號";
         return false;
       } finally {
         addInvestmentButton.disabled = false;
@@ -903,28 +903,14 @@
       }
       refreshPrices.disabled = false;
       priceStatus.textContent = success ? `已更新 ${success} 檔` : "更新失敗";
-      showToast(success ? "股價已更新" : "無法更新股價，請確認代號");
+      showToast(success ? "收盤價已更新" : "價格表沒有可更新的台股代號");
       render();
     }
 
     async function fetchMarketQuote(symbol) {
-      try {
-        const localQuote = await fetchLocalPrice(symbol);
-        if (localQuote) return localQuote;
-      } catch (error) {
-        console.warn(error);
-      }
-
-      const candidates = symbolCandidates(symbol);
-      for (const candidate of candidates) {
-        try {
-          const quote = await fetchYahooQuote(candidate);
-          if (quote.price > 0) return quote;
-        } catch (error) {
-          console.warn(error);
-        }
-      }
-      throw new Error("quote failed");
+      const localQuote = await fetchLocalPrice(symbol);
+      if (localQuote) return localQuote;
+      throw new Error("symbol not found in prices.json");
     }
 
     async function fetchLocalPrice(symbol) {
@@ -951,17 +937,6 @@
         });
       }
       return priceBookPromise;
-    }
-
-    async function fetchYahooQuote(symbol) {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("quote failed");
-      const data = await response.json();
-      const result = data.chart?.result?.[0];
-      const meta = result?.meta || {};
-      const price = Number(meta.regularMarketPrice || meta.previousClose || 0);
-      return { symbol: meta.symbol || symbol, price, currency: meta.currency || "TWD" };
     }
 
     function symbolCandidates(symbol) {
