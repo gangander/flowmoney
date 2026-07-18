@@ -1,11 +1,18 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 const twseUrl = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_AVG_ALL";
 const tpexUrl = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes";
-const prices = {};
+const existing = await loadExistingPrices();
+const prices = { ...(existing.prices || {}) };
+const updatedSources = [];
 
-await addTwsePrices();
-await addTpexPrices();
+await tryUpdate("TWSE", addTwsePrices);
+await tryUpdate("TPEx", addTpexPrices);
+
+if (!updatedSources.length) {
+  console.log("No price sources updated; keeping existing prices.json");
+  process.exit(0);
+}
 
 await writeFile("prices.json", `${JSON.stringify({
   generatedAt: new Date().toISOString(),
@@ -13,10 +20,33 @@ await writeFile("prices.json", `${JSON.stringify({
   prices
 }, null, 2)}\n`, "utf8");
 
-console.log(`Wrote ${Object.keys(prices).length} Taiwan stock prices`);
+console.log(`Wrote ${Object.keys(prices).length} Taiwan stock prices from ${updatedSources.join(", ")}`);
+
+async function loadExistingPrices() {
+  try {
+    return JSON.parse(await readFile("prices.json", "utf8"));
+  } catch {
+    return { prices: {} };
+  }
+}
+
+async function tryUpdate(source, updateFn) {
+  try {
+    const count = await updateFn();
+    if (count > 0) {
+      updatedSources.push(source);
+      console.log(`${source}: updated ${count} prices`);
+    } else {
+      console.warn(`${source}: no usable prices returned; keeping existing data`);
+    }
+  } catch (error) {
+    console.warn(`${source}: ${error.message}; keeping existing data`);
+  }
+}
 
 async function addTwsePrices() {
   const rows = await fetchJson(twseUrl);
+  let count = 0;
   for (const row of rows) {
     const code = String(row.Code || "").trim().toUpperCase();
     const price = parsePrice(row.ClosingPrice);
@@ -30,11 +60,14 @@ async function addTwsePrices() {
       date: rocDateToIso(row.Date),
       currency: "TWD"
     };
+    count += 1;
   }
+  return count;
 }
 
 async function addTpexPrices() {
   const rows = await fetchJson(tpexUrl);
+  let count = 0;
   for (const row of rows) {
     const code = String(row.SecuritiesCompanyCode || "").trim().toUpperCase();
     const price = parsePrice(row.Close);
@@ -48,7 +81,9 @@ async function addTpexPrices() {
       date: rocDateToIso(row.Date),
       currency: "TWD"
     };
+    count += 1;
   }
+  return count;
 }
 
 async function fetchJson(url) {
